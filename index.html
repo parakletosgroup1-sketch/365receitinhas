@@ -602,9 +602,14 @@ const PRODUCT='receitinhas-nanna';
 const db=getFirestore(initializeApp({apiKey:"AIzaSyDs8d7vR6gcqhzycJ3oPokIxnhVT-No6tE",authDomain:"lp-receitas.firebaseapp.com",projectId:"lp-receitas",storageBucket:"lp-receitas.firebasestorage.app",messagingSenderId:"137885130898",appId:"1:137885130898:web:5f76c46e409dba61e6064b"}));
 let sid;try{sid=sessionStorage.getItem('lp_sid');if(!sid){sid='lp_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);sessionStorage.setItem('lp_sid',sid);}}catch(e){sid='lp_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8);}
 const q=new URLSearchParams(location.search);
+/* Diagnóstico: abra a página com ?debug=1 para ver na tela se a gravação funcionou. */
+const DBG=q.has('debug');let box=null,okShown=false;
+function dbg(m){if(!DBG)return;if(!box){box=document.createElement('div');box.style.cssText='position:fixed;left:8px;right:8px;bottom:8px;z-index:99999;background:#111;color:#fff;font:12px/1.4 monospace;padding:10px;border-radius:8px;white-space:pre-wrap;word-break:break-all';document.body.appendChild(box);}box.textContent='TRACKING ('+PRODUCT+')\nID: '+sid+'\n'+m;}
+dbg('Script rodando. Aguardando gravar...');
+setTimeout(()=>{if(!okShown)dbg('SEM RESPOSTA do Firebase em 6s.\nProvável bloqueio de rede ou de extensão/navegador.');},6000);
 const st={sessionId:sid,product:PRODUCT,utm_source:(q.get('utm_source')||'').toLowerCase(),utm_campaign:q.get('utm_campaign')||'',utm_content:q.get('utm_content')||'',utm_term:q.get('utm_term')||'',device:/Mobi|Android/i.test(navigator.userAgent)?'mobile':'desktop',maxScroll:0,viewedPlans:false,clickedPlan:'',checkout:false};
 let first=true,timer=null;
-function write(){clearTimeout(timer);const d={...st,lastActivity:serverTimestamp()};if(first){d.enteredAt=serverTimestamp();first=false;}return setDoc(doc(db,'lp_sessions',sid),d,{merge:true}).catch(()=>{});}
+function write(){clearTimeout(timer);const d={...st,lastActivity:serverTimestamp()};if(first){d.enteredAt=serverTimestamp();first=false;}return setDoc(doc(db,'lp_sessions',sid),d,{merge:true}).then(()=>{okShown=true;dbg('OK: gravou no Firestore.');}).catch(e=>{okShown=true;dbg('ERRO AO GRAVAR:\n'+(e&&e.code||'')+' '+(e&&e.message||e));});}
 function save(){clearTimeout(timer);timer=setTimeout(write,400);}
 save();
 let ms=0;addEventListener('scroll',()=>{const h=document.documentElement.scrollHeight-innerHeight;if(h<=0)return;const p=Math.round(Math.min(100,scrollY/h*100)/25)*25;if(p>ms){ms=p;st.maxScroll=p;save();}},{passive:true});
